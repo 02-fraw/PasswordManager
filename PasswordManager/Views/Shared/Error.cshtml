@@ -1,0 +1,12 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Error";
+}
+<section class="document-sheet">
+    <h1 class="doc-title">Something went wrong</h1>
+    <p class="doc-description">An unexpected error occurred while processing your request.</p>
+    @if (Model.ShowRequestId)
+    {
+        <p class="doc-description">Request ID: <code>@Model.RequestId</code></p>
+    }
+</section>

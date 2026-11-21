@@ -1,0 +1,323 @@
+@model VaultPageViewModel
+
+<section class="admin-forms-grid">
+    <div class="admin-panel-box">
+        <div class="admin-panel-header">
+            <h2>Add Account</h2>
+            <span class="admin-badge">Email, Username, or Phone</span>
+        </div>
+
+        <form asp-controller="Admin" asp-action="CreateAccount" method="post" class="stacked-form" autocomplete="off">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label for="createAccountName">Account / Application *</label>
+                    <input type="text" id="createAccountName" name="AccountName" class="form-input" placeholder="e.g. GitHub, Adobe, Steam" maxlength="160" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="createLoginType">Login Type</label>
+                    <select id="createLoginType" name="LoginType" class="form-input">
+                        <option value="1">Email</option>
+                        <option value="2">Username</option>
+                        <option value="3">Phone</option>
+                        <option value="0">None</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label for="createLoginIdentifier">Email / Username / Phone</label>
+                    <input type="text" id="createLoginIdentifier" name="LoginIdentifier" class="form-input" placeholder="e.g. name@example.com or handle" maxlength="200" />
+                </div>
+
+                <div class="form-group">
+                    <label for="createPassword">Password</label>
+                    <input type="text" id="createPassword" name="Password" class="form-input" placeholder="Optional if passwordless" maxlength="300" />
+                </div>
+            </div>
+
+            <div class="form-actions-end">
+                <button type="submit" class="btn-save">Add Account</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="admin-panel-box">
+        <div class="admin-panel-header">
+            <h2>Add Recovery Code Block</h2>
+            <span class="admin-badge">Grouped by Service</span>
+        </div>
+
+        <form asp-controller="Admin" asp-action="CreateRecoveryCode" method="post" class="stacked-form" autocomplete="off">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label for="createServiceName">Service / Account Name *</label>
+                    <input type="text" id="createServiceName" name="ServiceName" class="form-input" placeholder="e.g. GitHub, Gmail, Trendyol" maxlength="160" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="createNotes">Short Note (optional)</label>
+                    <input type="text" id="createNotes" name="Notes" class="form-input" placeholder="e.g. 2FA backup codes" maxlength="400" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="createCodes">Recovery Codes *</label>
+                <textarea id="createCodes" name="Codes" class="form-input form-textarea" rows="3" placeholder="Paste recovery codes here (one or multiple lines)" maxlength="2000" required></textarea>
+            </div>
+
+            <div class="form-actions-end">
+                <button type="submit" class="btn-save">Add Recovery Block</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<div class="toolbar-strip">
+    <div class="search-box">
+        <span class="search-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </span>
+        <input type="search"
+               id="vaultSearchInput"
+               class="search-input"
+               placeholder="Filter accounts, logins, passwords, or recovery blocks..."
+               autocomplete="off" />
+        <button type="button"
+                id="vaultSearchClearBtn"
+                class="search-clear-btn"
+                title="Clear search"
+                aria-label="Clear search"
+                hidden>&times;</button>
+    </div>
+
+    <div class="stats-pills">
+        <span class="stat-pill">
+            Accounts: <strong id="visibleAccountsCount">@Model.TotalAccountCount</strong>
+        </span>
+        <span class="stat-pill">
+            Recovery Blocks: <strong id="visibleRecoveryCount">@Model.TotalRecoveryBlockCount</strong>
+        </span>
+        <button type="button" id="toggleAllPasswordsBtn" class="stat-pill pill-action-btn">
+            Show All Passwords
+        </button>
+    </div>
+</div>
+
+<section class="document-sheet">
+    <h1 class="doc-title">Manage Vault</h1>
+    <p class="doc-description">Edit any account or recovery code block in place via pop-up modal, or remove outdated entries.</p>
+
+    <h2 class="doc-section-heading">Accounts</h2>
+
+    @if (Model.Accounts.Count == 0)
+    {
+        <div class="empty-state">
+            <p>No accounts saved yet. Use the form above to add your first account.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table class="vault-table" id="accountsTable">
+                <thead>
+                    <tr>
+                        <th class="col-app-admin">Account / Application</th>
+                        <th class="col-login-admin">Login (Email / Username / Phone)</th>
+                        <th class="col-pass-admin">Password</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Accounts)
+                    {
+                        var searchText = $"{item.AccountName} {item.LoginTypeLabel} {item.LoginIdentifier} {item.Password}".ToLowerInvariant();
+                        <tr class="vault-row" data-search="@searchText">
+                            <td class="cell-app" data-label="Account / Application">
+                                <strong>@item.AccountName</strong>
+                            </td>
+                            <td class="cell-login" data-label="Login">
+                                @if (!string.IsNullOrWhiteSpace(item.LoginIdentifier))
+                                {
+                                    <div class="login-cell-wrap">
+                                        @if (!string.IsNullOrWhiteSpace(item.LoginTypeLabel))
+                                        {
+                                            <span class="login-type-badge type-@item.LoginType.ToString().ToLowerInvariant()">@item.LoginTypeLabel</span>
+                                        }
+                                        <span class="login-value">@item.LoginIdentifier</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="muted-dash">&mdash;</span>
+                                }
+                            </td>
+                            <td class="cell-pass" data-label="Password">
+                                @if (!string.IsNullOrWhiteSpace(item.Password))
+                                {
+                                    <div class="password-cell-wrap">
+                                        <code class="password-value masked" data-secret="@item.Password">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</code>
+                                        <button type="button" class="icon-action-btn reveal-btn">Show</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="muted-dash">&mdash;</span>
+                                }
+                            </td>
+                            <td class="cell-actions-col" data-label="Actions">
+                                <div class="cell-actions">
+                                    <button type="button"
+                                            class="btn-mini btn-edit js-edit-account"
+                                            data-id="@item.Id"
+                                            data-account-name="@item.AccountName"
+                                            data-login-type="@((int)item.LoginType)"
+                                            data-login-identifier="@item.LoginIdentifier"
+                                            data-password="@item.Password">
+                                        Edit
+                                    </button>
+                                    <form asp-controller="Admin" asp-action="DeleteAccount" method="post" class="inline-delete-form" data-confirm-delete="@item.AccountName">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn-mini btn-delete">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div id="noAccountsMatch" class="empty-state" hidden>
+            <p>No accounts match your search.</p>
+        </div>
+    }
+
+    <h2 class="doc-section-heading section-gap">Recovery Codes</h2>
+
+    @if (Model.RecoveryBlocks.Count == 0)
+    {
+        <div class="empty-state">
+            <p>No recovery code blocks saved yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="recovery-grid" id="recoveryGrid">
+            @foreach (var block in Model.RecoveryBlocks)
+            {
+                var blockSearch = $"{block.ServiceName} {block.Notes} {block.Codes}".ToLowerInvariant();
+                <article class="recovery-block" data-search="@blockSearch">
+                    <div class="recovery-block-header">
+                        <div>
+                            <h3>@block.ServiceName</h3>
+                            @if (!string.IsNullOrWhiteSpace(block.Notes))
+                            {
+                                <p class="recovery-note">@block.Notes</p>
+                            }
+                        </div>
+                        <div class="cell-actions">
+                            <button type="button"
+                                    class="btn-mini btn-edit js-edit-recovery"
+                                    data-id="@block.Id"
+                                    data-service-name="@block.ServiceName"
+                                    data-notes="@block.Notes"
+                                    data-codes="@block.Codes">
+                                Edit
+                            </button>
+                            <form asp-controller="Admin" asp-action="DeleteRecoveryCode" method="post" class="inline-delete-form" data-confirm-delete="@block.ServiceName recovery codes">
+                                <input type="hidden" name="id" value="@block.Id" />
+                                <button type="submit" class="btn-mini btn-delete">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                    <pre class="recovery-code-pre">@block.Codes</pre>
+                </article>
+            }
+        </div>
+        <div id="noRecoveryMatch" class="empty-state" hidden>
+            <p>No recovery code blocks match your search.</p>
+        </div>
+    }
+</section>
+
+<!-- Edit Account Modal -->
+<dialog id="editAccountDialog" class="vault-dialog">
+    <div class="dialog-content">
+        <div class="dialog-header">
+            <h2>Edit Account</h2>
+            <button type="button" class="dialog-close-btn" data-close-dialog="editAccountDialog" aria-label="Close">&times;</button>
+        </div>
+        <form asp-controller="Admin" asp-action="EditAccount" method="post" class="stacked-form" autocomplete="off">
+            <input type="hidden" id="editAccountId" name="Id" />
+
+            <div class="form-group">
+                <label for="editAccountName">Account / Application *</label>
+                <input type="text" id="editAccountName" name="AccountName" class="form-input" maxlength="160" required />
+            </div>
+
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label for="editLoginType">Login Type</label>
+                    <select id="editLoginType" name="LoginType" class="form-input">
+                        <option value="1">Email</option>
+                        <option value="2">Username</option>
+                        <option value="3">Phone</option>
+                        <option value="0">None</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editLoginIdentifier">Email / Username / Phone</label>
+                    <input type="text" id="editLoginIdentifier" name="LoginIdentifier" class="form-input" maxlength="200" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="editPassword">Password</label>
+                <input type="text" id="editPassword" name="Password" class="form-input" maxlength="300" />
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" class="btn-cancel" data-close-dialog="editAccountDialog">Cancel</button>
+                <button type="submit" class="btn-save">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<!-- Edit Recovery Code Modal -->
+<dialog id="editRecoveryDialog" class="vault-dialog">
+    <div class="dialog-content">
+        <div class="dialog-header">
+            <h2>Edit Recovery Code Block</h2>
+            <button type="button" class="dialog-close-btn" data-close-dialog="editRecoveryDialog" aria-label="Close">&times;</button>
+        </div>
+        <form asp-controller="Admin" asp-action="EditRecoveryCode" method="post" class="stacked-form" autocomplete="off">
+            <input type="hidden" id="editRecoveryId" name="Id" />
+
+            <div class="form-group">
+                <label for="editServiceName">Service / Account Name *</label>
+                <input type="text" id="editServiceName" name="ServiceName" class="form-input" maxlength="160" required />
+            </div>
+
+            <div class="form-group">
+                <label for="editRecoveryNotes">Short Note (optional)</label>
+                <input type="text" id="editRecoveryNotes" name="Notes" class="form-input" maxlength="400" />
+            </div>
+
+            <div class="form-group">
+                <label for="editRecoveryCodes">Recovery Codes *</label>
+                <textarea id="editRecoveryCodes" name="Codes" class="form-input form-textarea" rows="5" maxlength="2000" required></textarea>
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" class="btn-cancel" data-close-dialog="editRecoveryDialog">Cancel</button>
+                <button type="submit" class="btn-save">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</dialog>

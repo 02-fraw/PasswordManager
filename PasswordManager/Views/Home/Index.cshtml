@@ -1,0 +1,165 @@
+@model VaultPageViewModel
+
+<div class="toolbar-strip">
+    <div class="search-box">
+        <span class="search-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </span>
+        <input type="search"
+               id="vaultSearchInput"
+               class="search-input"
+               placeholder="Search account, email, username, phone, or recovery service..."
+               autocomplete="off" />
+        <button type="button"
+                id="vaultSearchClearBtn"
+                class="search-clear-btn"
+                title="Clear search"
+                aria-label="Clear search"
+                hidden>&times;</button>
+    </div>
+
+    <div class="stats-pills">
+        <span class="stat-pill">
+            Accounts: <strong id="visibleAccountsCount">@Model.TotalAccountCount</strong>
+        </span>
+        <span class="stat-pill">
+            Recovery Blocks: <strong id="visibleRecoveryCount">@Model.TotalRecoveryBlockCount</strong>
+        </span>
+        <button type="button" id="toggleAllPasswordsBtn" class="stat-pill pill-action-btn">
+            Show All Passwords
+        </button>
+    </div>
+</div>
+
+<section class="document-sheet">
+    <div class="sheet-header">
+        <div>
+            <h1 class="doc-title">Password Vault</h1>
+            <p class="doc-description">
+                Accounts are sorted alphabetically with dedicated login identifiers and recovery code blocks.
+            </p>
+        </div>
+    </div>
+
+    <h2 class="doc-section-heading">Accounts</h2>
+
+    @if (Model.Accounts.Count == 0)
+    {
+        <div class="empty-state">
+            <p>No accounts saved yet. Open the <a asp-controller="Admin" asp-action="Index">Admin Panel</a> to add your first entry.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table class="vault-table" id="accountsTable">
+                <thead>
+                    <tr>
+                        <th class="col-app">Account / Application</th>
+                        <th class="col-login">Login (Email / Username / Phone)</th>
+                        <th class="col-pass">Password</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Accounts)
+                    {
+                        var searchText = $"{item.AccountName} {item.LoginTypeLabel} {item.LoginIdentifier} {item.Password}".ToLowerInvariant();
+                        <tr class="vault-row" data-search="@searchText">
+                            <td class="cell-app" data-label="Account / Application">
+                                <strong>@item.AccountName</strong>
+                            </td>
+                            <td class="cell-login" data-label="Login">
+                                @if (!string.IsNullOrWhiteSpace(item.LoginIdentifier))
+                                {
+                                    <div class="login-cell-wrap">
+                                        @if (!string.IsNullOrWhiteSpace(item.LoginTypeLabel))
+                                        {
+                                            <span class="login-type-badge type-@item.LoginType.ToString().ToLowerInvariant()">@item.LoginTypeLabel</span>
+                                        }
+                                        <span class="login-value">@item.LoginIdentifier</span>
+                                        <button type="button"
+                                                class="icon-action-btn copy-btn"
+                                                data-copy="@item.LoginIdentifier"
+                                                title="Copy login"
+                                                aria-label="Copy login">Copy</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="muted-dash">&mdash;</span>
+                                }
+                            </td>
+                            <td class="cell-pass" data-label="Password">
+                                @if (!string.IsNullOrWhiteSpace(item.Password))
+                                {
+                                    <div class="password-cell-wrap">
+                                        <code class="password-value masked" data-secret="@item.Password">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</code>
+                                        <div class="inline-cell-tools">
+                                            <button type="button"
+                                                    class="icon-action-btn reveal-btn"
+                                                    title="Show or hide password"
+                                                    aria-label="Toggle password visibility">Show</button>
+                                            <button type="button"
+                                                    class="icon-action-btn copy-btn"
+                                                    data-copy="@item.Password"
+                                                    title="Copy password"
+                                                    aria-label="Copy password">Copy</button>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="muted-dash">&mdash;</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div id="noAccountsMatch" class="empty-state" hidden>
+            <p>No accounts match your search.</p>
+        </div>
+    }
+
+    <h2 class="doc-section-heading section-gap">Recovery Codes</h2>
+
+    @if (Model.RecoveryBlocks.Count == 0)
+    {
+        <div class="empty-state">
+            <p>No recovery code blocks added yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="recovery-grid" id="recoveryGrid">
+            @foreach (var block in Model.RecoveryBlocks)
+            {
+                var blockSearch = $"{block.ServiceName} {block.Notes} {block.Codes}".ToLowerInvariant();
+                <article class="recovery-block" data-search="@blockSearch">
+                    <div class="recovery-block-header">
+                        <div>
+                            <h3>@block.ServiceName</h3>
+                            @if (!string.IsNullOrWhiteSpace(block.Notes))
+                            {
+                                <p class="recovery-note">@block.Notes</p>
+                            }
+                        </div>
+                        <button type="button"
+                                class="icon-action-btn copy-btn"
+                                data-copy="@block.Codes"
+                                title="Copy recovery codes"
+                                aria-label="Copy recovery codes">Copy</button>
+                    </div>
+                    <pre class="recovery-code-pre">@block.Codes</pre>
+                </article>
+            }
+        </div>
+        <div id="noRecoveryMatch" class="empty-state" hidden>
+            <p>No recovery code blocks match your search.</p>
+        </div>
+    }
+</section>
